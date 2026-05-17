@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: ai-platform-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - LM_STUDIO_BASE_URL=${LM_STUDIO_BASE_URL:-http://host.docker.internal:1234/v1}
+      - LM_STUDIO_API_KEY=${LM_STUDIO_API_KEY:-lm-studio}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-local-model}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ENABLE_SANDBOX=${ENABLE_SANDBOX:-true}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./workspace:/app/workspace
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    container_name: ai-platform-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  data:
+  logs:
+  workspace:
